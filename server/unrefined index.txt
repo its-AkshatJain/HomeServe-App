@@ -1,0 +1,536 @@
+import express from "express";
+import pg from "pg";
+import bcrypt from "bcrypt";
+import cors from 'cors';
+import jwt from 'jsonwebtoken';
+
+const app = express();
+const port = 3000;
+const JWT_SECRET = 'wrwegsdferiewougfsdwjfefrfqeoqwrworfkefsdjksdfsd';
+// Cross-Origin Resource Sharing
+app.use(cors()); 
+// Middleware to parse JSON request bodies
+app.use(express.json());
+
+// Middleware for role checking
+const checkProvider = async (req, res, next) => {
+  const userId = req.user.id;
+  const userResult = await pool.query('SELECT role FROM users WHERE user_id = $1', [userId]);
+  
+  if (userResult.rows.length === 0 || userResult.rows[0].role !== 'provider') {
+    return res.status(403).json({ message: 'Access denied. Providers only.' });
+  }
+  next();
+};
+
+// Middleware to authenticate JWT tokens
+const authenticateToken = (req, res, next) => {
+  const token = req.headers['authorization'];
+
+  // Check if the token is provided
+  if (!token) {
+    return res.status(401).json({ message: 'Access denied. No token provided.' });
+  }
+
+  // Verify the token and extract the user information
+  jwt.verify(token.split(" ")[1], JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: 'Invalid or expired token' });
+    }
+
+    // Attach the user information (id) to the request object
+    req.user = user; // `user.id` will be available
+    next();
+  });
+};
+
+
+// Initialize PostgreSQL client using pg.Pool for connection pooling
+const pool = new pg.Pool({
+  user: "postgres",
+  host: "localhost",
+  database: "Homeserve",
+  password: "akshat1234",
+  port: 5432,
+});
+
+// Test the database connection
+pool.connect((err) => {
+  if (err) {
+    console.error('Error connecting to PostgreSQL:', err);
+  } else {
+    console.log('Connected to PostgreSQL database.');
+  }
+});
+
+// Route for user registration
+app.post('/api/register', async (req, res) => {
+  const { email, password, name, phone, address, city } = req.body;
+
+  try {
+    // Hash password before storing it in the database
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insert the new user into the database
+    const result = await pool.query(
+      `INSERT INTO users (email, password_hash, name, phone_number, address, city) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [email, hashedPassword, name, phone, address, city]
+    );
+
+    // Respond with success and user information
+    res.status(201).json({ success: true, user: result.rows[0] });
+  } catch (err) {
+    console.error('Error registering user:', err);
+    res.status(400).json({ success: false, message: 'Error registering user' });
+  }
+});
+
+// Route for user login with role selection
+// app.post('/api/login', async (req, res) => {
+//   const { email, password } = req.body;
+
+//   try {
+//     // Fetch the user from the database using the email
+//     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+
+//     if (result.rows.length === 0) {
+//       return res.status(400).json({ success: false, message: 'User not found' });
+//     }
+
+//     const user = result.rows[0];
+
+//     // Compare the provided password with the hashed password in the database
+//     const isMatch = await bcrypt.compare(password, user.password_hash);
+
+//     if (!isMatch) {
+//       return res.status(400).json({ success: false, message: 'Invalid password' });
+//     }
+
+//     // If the login is successful, respond with the user_id and success message
+//     res.json({ success: true, message: 'Login successful', userId: user.user_id });
+//   } catch (err) {
+//     console.error('Error logging in user:', err);
+//     res.status(500).json({ success: false, message: 'Error logging in user' });
+//   }
+// });
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'User not found' });
+    }
+
+    const user = result.rows[0];
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Invalid password' });
+    }
+
+    // Create a token with the user's ID
+    const token = jwt.sign({ id: user.user_id }, JWT_SECRET, { expiresIn: '3h' });
+
+    // Send token back to the client
+    res.json({ success: true, message: 'Login successful', token });
+  } catch (err) {
+    console.error('Error logging in user:', err);
+    res.status(500).json({ success: false, message: 'Error logging in user' });
+  }
+});
+
+app.post('/api/select-role', authenticateToken, async (req, res) => {
+  const { role } = req.body; // Role is still passed from the request body
+
+  try {
+    // Use req.user.id from the decoded JWT token
+    const result = await pool.query(
+      'UPDATE users SET role = $1 WHERE user_id = $2 RETURNING *',
+      [role, req.user.id] // Use the user ID from the JWT token
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Respond with success
+    res.json({ success: true, message: 'Role updated successfully', user: result.rows[0] });
+  } catch (err) {
+    console.error('Error selecting role:', err);
+    res.status(500).json({ success: false, message: 'Failed to update role' });
+  }
+});
+
+
+app.get('/api/service-categories', async (req, res) => {
+  try {
+    // Fetch all categories from the Service_Categories table
+    const result = await pool.query('SELECT * FROM Service_Categories ORDER BY category_name');
+    
+    // Respond with the categories
+    res.json({ categories: result.rows });
+  } catch (error) {
+    console.error('Error fetching service categories:', error);
+    res.status(500).json({ message: 'Error fetching service categories' });
+  }
+});
+
+app.post('/api/add-service', authenticateToken, checkProvider, async (req, res) => {
+  const { service_name, description, price, category_id } = req.body;
+  const userId = req.user.id;
+
+  if (!service_name || !description || !price || !category_id) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+
+  try {
+    // Check if the user is already a service provider
+    let providerResult = await pool.query(
+      'SELECT provider_id FROM Service_Providers WHERE user_id = $1',
+      [userId]
+    );
+
+    let providerId;
+    if (providerResult.rows.length === 0) {
+      // Insert the user as a new service provider
+      const newProviderResult = await pool.query(
+        'INSERT INTO Service_Providers (user_id) VALUES ($1) RETURNING provider_id',
+        [userId]
+      );
+      providerId = newProviderResult.rows[0].provider_id;
+    } else {
+      providerId = providerResult.rows[0].provider_id;
+    }
+
+    // Check if the service already exists in the Services table
+    let serviceResult = await pool.query(
+      'SELECT service_id FROM Services WHERE service_name = $1 AND category_id = $2',
+      [service_name, category_id]
+    );
+
+    let serviceId;
+    if (serviceResult.rows.length === 0) {
+      // If the service does not exist, create a new one
+      const newServiceResult = await pool.query(
+        'INSERT INTO Services (service_name, description, price, category_id) VALUES ($1, $2, $3, $4) RETURNING service_id',
+        [service_name, description, price, category_id]
+      );
+      serviceId = newServiceResult.rows[0].service_id;
+    } else {
+      serviceId = serviceResult.rows[0].service_id;
+    }
+
+    // Link the provider with the service in the Service_Provider_Services table
+    await pool.query(
+      'INSERT INTO Service_Provider_Services (provider_id, service_id) VALUES ($1, $2)',
+      [providerId, serviceId]
+    );
+
+    res.json({ success: true, message: 'Service added successfully!' });
+  } catch (error) {
+    console.error('Error adding service:', error);
+    res.status(500).json({ message: 'Error adding service' });
+  }
+});
+
+// Fetch services for the provider
+app.get('/api/provider/services', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id;  // Ensure authentication middleware provides the logged-in user ID
+
+    const queryText = `
+      SELECT 
+        sps.provider_service_id,
+        s.service_name,
+        s.description,
+        s.price,
+        sc.category_name,
+        sp.rating,
+        sp.total_jobs_completed,
+        sp.availability
+      FROM 
+        Service_Provider_Services sps
+      JOIN 
+        Service_Providers sp ON sps.provider_id = sp.provider_id
+      JOIN 
+        Services s ON sps.service_id = s.service_id
+      JOIN 
+        Service_Categories sc ON s.category_id = sc.category_id
+      WHERE 
+        sp.user_id = $1`;  // Use the authenticated user ID to fetch services
+
+    const { rows: services } = await pool.query(queryText, [providerId]);
+
+    res.json({ services });
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    res.status(500).json({ error: 'Error fetching services' });
+  }
+});
+
+// Fetch current jobs (active but not completed)
+// app.get('/api/provider/current-jobs', authenticateToken, async (req, res) => {
+//   const providerUserId = req.user.id;
+
+//   try {
+//     const queryText = `
+//       SELECT 
+//         cj.job_id,
+//         s.service_name,
+//         cj.user_id,
+//         cj.start_date,
+//         cj.end_date
+//       FROM 
+//         Completed_Jobs cj
+//       JOIN 
+//         Services s ON cj.service_id = s.service_id
+//       JOIN 
+//         Service_Providers sp ON sp.provider_id = cj.provider_id
+//       WHERE 
+//         sp.user_id = $1 AND cj.completed_at IS NULL`;
+
+//     const { rows: currentJobs } = await pool.query(queryText, [providerUserId]);
+
+//     res.json({ currentJobs });
+//   } catch (error) {
+//     console.error('Error fetching current jobs:', error);
+//     res.status(500).json({ message: 'Error fetching current jobs' });
+//   }
+// });
+
+// Fetch completed jobs for the provider
+app.get('/api/provider/completed-jobs', authenticateToken, async (req, res) => {
+  const providerUserId = req.user.id;
+
+  try {
+    console.log('Provider User ID:', providerUserId);
+
+    const queryText = `
+      SELECT 
+        cj.job_id,
+        cj.review,
+        cj.rating,
+        s.service_name,
+        sc.category_name,
+        cj.user_id
+      FROM 
+        Completed_Jobs cj
+      JOIN 
+        Services s ON cj.service_id = s.service_id
+      JOIN 
+        Service_Categories sc ON s.category_id = sc.category_id
+      JOIN
+        Service_Providers sp ON sp.provider_id = cj.provider_id
+      WHERE 
+        sp.user_id = $1`;
+
+    const { rows: jobs } = await pool.query(queryText, [providerUserId]);
+
+    console.log('Fetched jobs:', jobs);
+    res.json({ jobs });
+  } catch (error) {
+    console.error('Error fetching completed jobs:', error);
+    res.status(500).json({ message: 'Error fetching completed jobs' });
+  }
+});
+
+// Mark a job as complete
+app.put('/api/provider/mark-job-as-complete/:jobId', authenticateToken, async (req, res) => {
+  const { jobId } = req.params;
+
+  try {
+    const queryText = `
+      UPDATE Completed_Jobs 
+      SET 
+        completed_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE 
+        job_id = $1
+      RETURNING *`;
+
+    const { rows } = await pool.query(queryText, [jobId]);
+
+    if (rows.length > 0) {
+      res.json({ success: true, message: 'Job marked as complete', job: rows[0] });
+    } else {
+      res.status(404).json({ success: false, message: 'Job not found' });
+    }
+  } catch (error) {
+    console.error('Error marking job as complete:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+
+// Update/Edit an existing service
+app.get('/api/provider/service/:serviceId', authenticateToken, async (req, res) => {
+  const providerServiceId = req.params.serviceId;
+  // const userId = req.user.id; // Assuming the token provides the user ID
+  
+  console.log('Received ProviderService ID:', providerServiceId);
+  // console.log('User ID from token:', userId);
+
+  try {
+    // Query to get providerId from Service_Providers using userId
+    const serviceIdResult = await pool.query(
+      'SELECT service_id FROM Service_Provider_Services WHERE provider_service_id = $1',
+      [providerServiceId]
+    );
+
+    // If no provider found, return an error
+    if (serviceIdResult.rowCount === 0) {
+      console.log('Provider not found for this user');
+      return res.status(404).json({ success: false, message: 'Provider not found for this user' });
+    }
+
+    const serviceId = serviceIdResult.rows[0].service_id;
+    console.log('Service ID fetched:', serviceId);
+
+    // Fetch the service by `service_id` from `Services` table
+    const result = await pool.query(
+      'SELECT * FROM Services WHERE service_id = $1',
+      [serviceId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    res.json({ service: result.rows[0] });
+  } catch (error) {
+    console.error('Error fetching service:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.put('/api/provider/edit-service/:serviceId', authenticateToken, async (req, res) => {
+  const providerServiceId = req.params.serviceId;
+  const { service_name, description, price } = req.body;
+  // const userId = req.user.id; // Assuming the token provides the user ID
+  
+  console.log('ProviderService ID:', providerServiceId);
+  // console.log('User ID from token:', userId);
+
+  try {
+    // Query to get providerId from Service_Providers using userId
+    const serviceIdResult = await pool.query(
+      'SELECT service_id FROM Service_Provider_Services WHERE provider_service_id = $1',
+      [providerServiceId]
+    );
+
+    // If no provider found, return an error
+    if (serviceIdResult.rowCount === 0) {
+      console.log('Provider not found for this user');
+      return res.status(404).json({ success: false, message: 'Provider not found for this user' });
+    }
+
+    const serviceId = serviceIdResult.rows[0].service_id;
+    console.log('Service ID fetched:', serviceId);
+    
+    // Update the service in the `Services` table using `service_id`
+    const result = await pool.query(
+      'UPDATE Services SET service_name = $1, description = $2, price = $3, updated_at = CURRENT_TIMESTAMP WHERE service_id = $4 RETURNING *',
+      [service_name, description, price, serviceId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Service not found or not authorized' });
+    }
+
+    res.json({ message: 'Service updated successfully', service: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating service:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
+// Delete a service
+app.delete('/api/provider/delete-service/:serviceId', authenticateToken, async (req, res) => {
+  const serviceId = req.params.serviceId;
+  const userId = req.user.id; // Assuming the token provides the user ID
+  
+  console.log('Received Service ID:', serviceId);
+  console.log('User ID from token:', userId);
+
+  try {
+    // Query to get providerId from Service_Providers using userId
+    const providerResult = await pool.query(
+      'SELECT provider_id FROM Service_Providers WHERE user_id = $1',
+      [userId]
+    );
+
+    // If no provider found, return an error
+    if (providerResult.rowCount === 0) {
+      console.log('Provider not found for this user');
+      return res.status(404).json({ success: false, message: 'Provider not found for this user' });
+    }
+
+    const providerId = providerResult.rows[0].provider_id;
+    console.log('Provider ID fetched:', providerId);
+
+    // Perform the deletion of the service
+    const deleteResult = await pool.query(
+      'DELETE FROM Service_Provider_Services WHERE provider_service_id = $1 AND provider_id = $2 RETURNING *',
+      [serviceId, providerId]
+    );
+
+    if (deleteResult.rowCount === 0) {
+      console.log('Service not found or unauthorized');
+      return res.status(404).json({ success: false, message: 'Service not found or not authorized' });
+    }
+
+    console.log('Service deleted successfully:', deleteResult.rows[0]);
+    res.json({ success: true, message: 'Service deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting service:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Route to fetch current (active but not completed) jobs for a provider
+app.get('/api/provider/current-jobs', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+        SELECT 
+            b.booking_id,
+            b.user_id,
+            u.name AS user_name,
+            b.service_id,
+            s.service_name,
+            b.provider_id,
+            sp.rating AS provider_rating,
+            sp.availability,
+            b.booking_time,
+            b.status,
+            b.payment_status,
+            b.created_at,
+            b.updated_at
+        FROM 
+            Bookings b
+        JOIN 
+            Users u ON b.user_id = u.user_id
+        JOIN 
+            Services s ON b.service_id = s.service_id
+        JOIN 
+            Service_Providers sp ON b.provider_id = sp.provider_id
+        WHERE 
+            b.status IN ('pending', 'confirmed')
+        ORDER BY 
+            b.booking_time DESC;
+    `);
+
+    res.status(200).json(result.rows);
+} catch (error) {
+    console.error('Error fetching current jobs:', error);
+    res.status(500).json({ error: 'Failed to fetch current jobs' });
+}
+});
+
+// Start the Express server
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
