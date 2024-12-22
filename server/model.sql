@@ -81,35 +81,6 @@ CREATE TABLE Bookings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. Payments Table
--- A table to handle payment details (optional, but can track payments better).
-
-CREATE TABLE Payments (
-    payment_id UUID PRIMARY KEY,
-    booking_id UUID REFERENCES Bookings(booking_id),
-    amount DECIMAL(10, 2),
-    payment_method VARCHAR(50),
-    payment_status VARCHAR(20) CHECK (payment_status IN ('successful', 'failed', 'pending')), -- Enum for payment outcome
-    transaction_id VARCHAR(255),
-    payment_gateway VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-7. Reviews Table(OPTIONAL)
-This table stores feedback given by users for the service they received.
-
-CREATE TABLE Reviews (
-    review_id UUID PRIMARY KEY,
-    user_id UUID REFERENCES Users(user_id),
-    provider_id UUID REFERENCES Service_Providers(provider_id),
-    booking_id UUID REFERENCES Bookings(booking_id),
-    rating INTEGER CHECK (rating >= 1 AND rating <= 5), -- Ratings between 1 and 5
-    comment TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE contact_messages (
     id SERIAL PRIMARY KEY, -- or AUTO_INCREMENT for MySQL
     name VARCHAR(255) NOT NULL,
