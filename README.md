@@ -1,6 +1,6 @@
 # HomeServe
 
-HomeServe is a user-centric web platform designed to bridge the gap between service providers and service takers in urban areas. Inspired by popular on-demand service apps, it enables individuals to connect, manage, and utilize various services with ease.
+HomeServe is a user-centric web platform designed to bridge the gap between service providers and service takers in urban areas. Inspired by popular on-demand service apps, it enables individuals to connect, manage, and utilize various services with ease
 
 ---
 
