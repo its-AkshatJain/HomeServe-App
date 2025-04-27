@@ -67,11 +67,6 @@ pool.connect((err) => {
   }
 });
 
-// app.use((req, res, next) => {
-//   console.log(`${req.method} ${req.url}`);
-//   next();
-// });
-
 // Route for user registration
 app.post('/api/register', async (req, res) => {
   const { email, password, name, phone, address, city } = req.body;
@@ -114,7 +109,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     // Create a token with the user's ID
-    const token = jwt.sign({ id: user.user_id }, JWT_SECRET, { expiresIn: '3h' });
+    const token = jwt.sign({ id: user.user_id }, JWT_SECRET, { expiresIn: '1h' });
 
     // Send token back to the client
     res.json({ success: true, message: 'Login successful', token });
@@ -151,28 +146,6 @@ app.post('/api/select-role', authenticateToken, async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to update role' });
   }
 });
-// app.post('/api/select-role', authenticateToken, async (req, res) => {
-//   const { role } = req.body;
-//   console.log('Role to set:', role);
-//   console.log('User ID from token:', req.user.id);
-
-//   try {
-//     const result = await pool.query(
-//       'UPDATE users SET role = $1 WHERE user_id = $2 RETURNING *',
-//       [role, req.user.id]
-//     );
-
-//     if (result.rows.length === 0) {
-//       console.warn('No matching user found for ID:', req.user.id);
-//       return res.status(404).json({ success: false, message: 'User not found' });
-//     }
-
-//     res.json({ success: true, message: 'Role updated successfully', user: result.rows[0] });
-//   } catch (err) {
-//     console.error('Error selecting role:', err);
-//     res.status(500).json({ success: false, message: 'Failed to update role' });
-//   }
-// });
 
 // ---------------------------------------------------------------------------------------------------------------
 //                                             Provider

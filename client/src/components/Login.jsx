@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import API_BASE_URL from '../config';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -9,7 +10,7 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    const response = await fetch(`http://localhost:3000/api/login`, {
+    const response = await fetch(`${API_BASE_URL}/api/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -34,7 +35,7 @@ const Login = () => {
       return;
     }
     try {
-      const response = await fetch('http://localhost:3000/api/select-role', {
+      const response = await fetch(`${API_BASE_URL}/api/select-role`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import API_BASE_URL from '../config';
 
 // Modal for displaying service details and booking
 const ServiceDetailsModal = ({ service, onClose, onBook }) => {
@@ -80,13 +81,13 @@ const ServiceTakerHome = () => {
         setLoading(true);
 
         const [servicesRes, currentBookingsRes, serviceHistoryRes] = await Promise.all([
-          fetch('http://localhost:3000/api/taker/services', {
+          fetch(`${API_BASE_URL}/api/taker/services`, {
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           }),
-          fetch('http://localhost:3000/api/taker/current-bookings', {
+          fetch(`${API_BASE_URL}/api/taker/current-bookings`, {
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           }),
-          fetch('http://localhost:3000/api/taker/service-history', {
+          fetch(`${API_BASE_URL}/api/taker/service-history`, {
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           }),
         ]);
@@ -114,7 +115,7 @@ const ServiceTakerHome = () => {
 
   const handleBookService = async (serviceId, providerId, requestedDate) => {
     try {
-      const response = await fetch('http://localhost:3000/api/taker/bookings', {
+      const response = await fetch(`${API_BASE_URL}/api/taker/bookings`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -143,7 +144,7 @@ const ServiceTakerHome = () => {
 
   const handleCancelBooking = async (bookingId) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/taker/cancel-booking/${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/taker/cancel-booking/${bookingId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,

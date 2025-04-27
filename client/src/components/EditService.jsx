@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import API_BASE_URL from '../config';
 
 const EditService = () => {
   const { serviceId } = useParams();
@@ -21,7 +22,7 @@ const EditService = () => {
   useEffect(() => {
     const fetchServiceDetails = async () => {
       try {
-        const response = await fetch(`http://localhost:3000/api/provider/service/${serviceId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/provider/service/${serviceId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -44,7 +45,7 @@ const EditService = () => {
 
     const fetchCategories = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/service-categories');
+        const response = await fetch(`${API_BASE_URL}/api/service-categories`);
         const data = await response.json();
         setCategories(data.categories);
       } catch (error) {
@@ -65,7 +66,7 @@ const EditService = () => {
     };
   
     try {
-      const response = await fetch(`http://localhost:3000/api/provider/edit-service/${serviceId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/provider/edit-service/${serviceId}`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -77,7 +78,7 @@ const EditService = () => {
       const data = await response.json();
       if (response.ok && data.success) {
         setMessage('Service updated successfully!');
-        setTimeout(() => {navigate('/service-provider-home')}, 2000);
+        setTimeout(() => { navigate('/service-provider-home') }, 2000);
       } else {
         setMessage('Error updating service: ' + (data.message || 'Unknown error.'));
       }
@@ -86,8 +87,6 @@ const EditService = () => {
       setMessage('An error occurred while updating the service.');
     }
   };
-  
-  
 
   if (loading) {
     return <div className="text-center text-gray-700">Loading service details...</div>;
@@ -161,6 +160,7 @@ const EditService = () => {
             </div>
           </div>
 
+          {/* Uncomment if using categories */}
           {/* <div className="mb-3">
             <label className="block text-gray-700 font-medium mb-1">Service Category</label>
             <select

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import API_BASE_URL from '../config';
 
 const ServiceProviderHome = () => {
   const [services, setServices] = useState([]);
@@ -15,13 +16,13 @@ const ServiceProviderHome = () => {
     const fetchData = async () => {
       try {
         const [servicesRes, currentJobsRes, completedJobsRes] = await Promise.all([
-          fetch('http://localhost:3000/api/provider/services', {
+          fetch(`${API_BASE_URL}/api/provider/services`, {
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           }),
-          fetch('http://localhost:3000/api/provider/current-jobs', {
+          fetch(`${API_BASE_URL}/api/provider/current-jobs`, {
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           }),
-          fetch('http://localhost:3000/api/provider/completed-jobs', {
+          fetch(`${API_BASE_URL}/api/provider/completed-jobs`, {
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           }),
         ]);
@@ -75,7 +76,7 @@ const ServiceProviderHome = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:3000/api/provider/delete-service/${serviceId}`,
+        `${API_BASE_URL}/api/provider/delete-service/${serviceId}`,
         {
           method: 'DELETE',
           headers: {
@@ -109,7 +110,7 @@ const ServiceProviderHome = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:3000/api/provider/update-job-status/${bookingId}`,
+        `${API_BASE_URL}/api/provider/update-job-status/${bookingId}`,
         {
           method: 'PUT',
           headers: {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import API_BASE_URL from '../config';
 
 const ProvideService = () => {
   const [serviceName, setServiceName] = useState('');
@@ -15,7 +16,7 @@ const ProvideService = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/service-categories');
+        const response = await fetch(`${API_BASE_URL}/api/service-categories`);
         const data = await response.json();
         setCategories(data.categories);
       } catch (error) {
@@ -46,7 +47,7 @@ const ProvideService = () => {
     };
 
     try {
-      const response = await fetch('http://localhost:3000/api/add-service', {
+      const response = await fetch(`${API_BASE_URL}/api/add-service`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

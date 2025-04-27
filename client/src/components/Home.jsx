@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ServiceTakerHome from './ServiceTakerHome';
 import ServiceProviderHome from './ServiceProviderHome';
+import API_BASE_URL from '../config';
 
 const Home = () => {
   const [role, setRole] = useState(localStorage.getItem('role') || 'taker');
@@ -25,7 +26,7 @@ const Home = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/api/select-role', {
+      const response = await fetch(`${API_BASE_URL}/api/select-role`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

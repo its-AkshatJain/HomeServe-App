@@ -1,6 +1,7 @@
 // src/components/Register.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import API_BASE_URL from '../config';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -15,7 +16,7 @@ const Register = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
 
-    const response = await fetch(`http://localhost:3000/api/register`, {
+    const response = await fetch(`${API_BASE_URL}/api/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
