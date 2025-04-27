@@ -13,8 +13,17 @@ const port = process.env.PORT || 3000;
 
 
 const JWT_SECRET = process.env.JWT_SECRET;
-// Cross-Origin Resource Sharing
-app.use(cors()); 
+
+// Set up CORS with dynamic origin based on .env CLIENT_URL
+const corsOptions = {
+  origin: process.env.CLIENT_URL,  // Allow only the specified client URL
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+// Use CORS middleware
+app.use(cors(corsOptions));
+
 // Middleware to parse JSON request bodies
 app.use(express.json());
 
