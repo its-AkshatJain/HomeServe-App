@@ -13,10 +13,6 @@
     "yarn": "^1.22.22"
   },
   "scripts": {
-    "start": "node index.js",
-    "dev": "vite", 
-    "build": "vite build", 
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "start": "node index.js"
   }
 }
