@@ -5,10 +5,12 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
-const app = express();
-const port = 3000;
-
 dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+
 
 const JWT_SECRET = process.env.JWT_SECRET;
 // Cross-Origin Resource Sharing
